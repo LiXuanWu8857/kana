@@ -1,6 +1,6 @@
 {
-  "name": "假名練習帳",
-  "short_name": "假名練習帳",
+  "name": "KanA",
+  "short_name": "KanA",
   "lang": "zh-Hant",
   "start_url": "./",
   "scope": "./",
