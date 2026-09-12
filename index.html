@@ -82,7 +82,10 @@ body.prc:not(.setopen) #v-practice{height:100%}
 .opt.kana-opt{font-family:var(--sys);font-size:30px}
 .opt.right{border-color:var(--take);background:#E8F2EA;color:var(--take)}
 .opt.wrong{border-color:var(--shu);background:#FBEAE6;color:var(--shu)}
-.next{display:block;width:100%;margin-top:14px;padding:14px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
+.next{position:relative;overflow:hidden;display:block;width:100%;margin-top:14px;padding:14px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
+.next .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.26);width:0}
+.next .bar.run{width:100%;transition:width var(--dur) linear}
+.next-label{position:relative}
 .note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
 
 /* 五十音表 */
@@ -191,6 +194,8 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
           <div class="seg setseg" data-key="script"><button data-v="h">平假名</button><button data-v="k">片假名</button><button data-v="m">混合</button></div></div>
         <div class="field"><span class="flabel">模式</span>
           <div class="seg setseg" data-key="mode"><button data-v="see">看字選音</button><button data-v="hear">聽音選字</button></div></div>
+        <div class="field"><span class="flabel">答對</span>
+          <div class="seg setseg" data-key="auto"><button data-v="on">自動下一題</button><button data-v="off">手動</button></div></div>
         <div class="field col"><span class="flabel">要考哪幾行（只選已經學過的）</span>
           <div id="rowPicker"></div></div>
       </div>
@@ -207,7 +212,7 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
         <p class="feedback" id="feedback" aria-live="polite"></p>
         <button class="ex" id="exBtn" hidden></button>
         <div class="opts" id="opts"></div>
-        <button class="next" id="nextBtn" hidden>下一題</button>
+        <button class="next" id="nextBtn" hidden><span class="bar" id="nextBar"></span><span class="next-label">下一題</span></button>
         <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
       </div>
     </section>
@@ -346,7 +351,7 @@ const MILESTONES=[
 
 /* ---------- 狀態與儲存 ---------- */
 const KEY='kana-trainer-v1';
-const defaultState=()=>({lv:{},stats:{total:0,correct:0},days:{},ms:{},settings:{script:'h',rows:['seion-0','seion-1'],mode:'see'},chartScript:'h'});
+const defaultState=()=>({lv:{},stats:{total:0,correct:0},days:{},ms:{},settings:{script:'h',rows:['seion-0','seion-1'],mode:'see',auto:'on'},chartScript:'h'});
 let state=defaultState();
 
 function applyLoaded(s){
@@ -470,7 +475,7 @@ function renderKana(reveal){
 
 /* 新出一題（附加到歷史尾端）。答對自動換題與左滑到最新題後都會呼叫 */
 function newQuestion(){
-  clearTimeout(advanceTimer);
+  stopCountdown();
   const pool=getPool();
   const item=pickNext(pool);lastId=item.id;
   const hear=state.settings.mode==='hear';
@@ -482,7 +487,7 @@ function newQuestion(){
 
 /* 依 history[hi] 重畫整個題目區；answered 的題目為唯讀複習狀態 */
 function render(anim){
-  clearTimeout(advanceTimer);
+  stopCountdown();
   const e=history[hi];
   cur=e.item;answered=e.answered;exWord=e.exWord;
   const hear=e.hear;
@@ -532,8 +537,21 @@ function answer(o){
   save();
   render('none');
   speak(moraSpeech(e.item.kana));
-  if(ok)advanceTimer=setTimeout(newQuestion,1100);   /* 答對約 1.1 秒自動下一題 */
+  if(ok&&state.settings.auto==='on')startCountdown(AUTO_MS);   /* 答對後倒數自動下一題 */
   updateStreakLabel();
+}
+
+const AUTO_MS=1800;
+function startCountdown(ms){
+  const bar=$('#nextBar');
+  bar.className='bar';bar.style.setProperty('--dur',ms+'ms');
+  bar.getBoundingClientRect();                                 /* 強制 reflow，動畫才會重跑 */
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)bar.classList.add('run');
+  advanceTimer=setTimeout(newQuestion,ms);
+}
+function stopCountdown(){
+  clearTimeout(advanceTimer);
+  const bar=$('#nextBar');if(bar)bar.className='bar';
 }
 
 /* 左滑：下一題（未作答會被擋）；右滑：回上一題複習 */
@@ -543,7 +561,7 @@ function goNext(){
   else gateHint();
 }
 function goPrev(){
-  if(hi>0){clearTimeout(advanceTimer);hi--;render('prev');}
+  if(hi>0){stopCountdown();hi--;render('prev');}
 }
 function restart(){history=[];hi=-1;lastId=null;newQuestion();}
 
@@ -869,7 +887,7 @@ $('#wsChange').onclick=()=>showWord(pickWord(sheetKana));
 $('#wsSyl').onclick=playSyllables;
 $('#wsWhole').onclick=playWhole;
 $('#exBtn').onclick=()=>{
-  clearTimeout(advanceTimer);$('#nextBtn').hidden=false;
+  stopCountdown();$('#nextBtn').hidden=false;
   openWord(cur.kana,exWord);
 };
 let exWord=null;
@@ -1058,6 +1076,7 @@ $('#resetBtn').onclick=()=>{
 
 /* ---------- 導覽 ---------- */
 function show(view){
+  if(view!=='practice')stopCountdown();
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===view));
   ['practice','chart','progress'].forEach(v=>$('#v-'+v).hidden=v!==view);
   document.body.classList.toggle('prc',view==='practice');
