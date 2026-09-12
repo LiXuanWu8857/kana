@@ -1,6 +1,6 @@
 # KanA（假名練習帳）— 專案規格書
 
-**目前版本：v1.3**（`sw.js` 快取版本 `kana-v7`，下次更新改為 `kana-v8`）
+**目前版本：v1.4**（`sw.js` 快取版本 `kana-v8`，下次更新改為 `kana-v9`）
 
 給 Claude Code 使用的建置規格。目標是做出一個部署在 GitHub Pages 的日文假名學習 PWA，手機優先，可加入主畫面、離線使用、自動保存進度。
 
@@ -90,9 +90,11 @@
 
 ### 4.1 練習頁
 
-**版面**（v1.1；v1.3 補強）
+**版面**（v1.1；v1.3／v1.4 補強）
 - 練習頁**不做上下捲動**，題目區在頁首與底部導覽列之間**垂直置中**（整頁鎖定為單一畫面；只有展開「調整」設定面板時才允許捲動看設定）
-- 練習頁**禁止雙指縮放與捲動回彈**：`#v-practice` 設 `touch-action:none`、`html,body` 設 `overscroll-behavior:none`；並在 `<head>` viewport 加 `maximum-scale=1, user-scalable=no`（全站關閉縮放）。左右滑動換題為自訂 JS 手勢，不受 `touch-action:none` 影響
+- 練習頁**禁止上下捲動與回彈**：`#v-practice` 設 `touch-action:none`、`html,body` 設 `overscroll-behavior:none`
+- **全站禁止縮放（v1.4 改法）**：不使用 viewport 的 `user-scalable=no`／`maximum-scale`（該法在 iOS 會把畫面卡在先前縮小的比例），改用 JS 攔截 `gesturestart`／`gesturechange`／`gestureend` 與多指 `touchmove` 來擋雙指縮放，並以 `html,body { touch-action:manipulation }` 擋雙擊放大
+- 左右滑動換題為自訂 JS 手勢，不受 `touch-action:none` 影響
 
 **題目區**
 - 正方形練習格，寬 `min(70vw, 250px)`，藍色 1.5px 邊框，淡紅虛線十字
@@ -538,7 +540,7 @@
 ### index.html `<head>`
 
 ```html
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#EEF0EC">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">

@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KanA</title>
 <meta name="theme-color" content="#EEF0EC">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Hiragino Sans","Hiragino Kaku Gothic ProN","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+html,body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-tap-highlight-color:transparent;overscroll-behavior:none;touch-action:manipulation}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 button:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
 .app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column}
@@ -973,6 +973,10 @@ $('#nextBtn').onclick=goNext;
     }
   },{passive:true});
 })();
+
+/* 完全禁止雙指縮放（iOS Safari／主畫面 App） */
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 
 /* ---------- 五十音表 ---------- */
 function renderChart(){

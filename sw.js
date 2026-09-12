@@ -1,5 +1,5 @@
 // 更新網站後改版本號，舊快取會被清掉
-const CACHE = 'kana-v7';
+const CACHE = 'kana-v8';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
