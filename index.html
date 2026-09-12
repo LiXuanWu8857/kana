@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>KanA</title>
 <meta name="theme-color" content="#EEF0EC">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Hiragino Sans","Hiragino Kaku Gothic ProN","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-tap-highlight-color:transparent}
+html,body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 button:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
 .app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column}
@@ -38,7 +38,7 @@ main{flex:1;min-height:0;padding:0 20px calc(76px + env(safe-area-inset-bottom))
 body.prc main{overflow:hidden}
 body.prc.setopen main{overflow-y:auto}
 #v-practice:not([hidden]){display:flex;flex-direction:column}
-body.prc:not(.setopen) #v-practice{height:100%}
+body.prc:not(.setopen) #v-practice{height:100%;touch-action:none}
 #quiz{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
 
