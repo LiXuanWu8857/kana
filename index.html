@@ -29,11 +29,17 @@
 html,body{background:var(--paper);color:var(--ink);font-family:var(--sys);-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
 button:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
-.app{max-width:480px;margin:0 auto;min-height:100vh}
-header{display:flex;justify-content:space-between;align-items:baseline;padding:calc(20px + env(safe-area-inset-top)) 20px 10px}
+.app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column}
+header{display:flex;justify-content:space-between;align-items:baseline;padding:calc(20px + env(safe-area-inset-top)) 20px 10px;flex-shrink:0}
 header h1{font-family:var(--sys);font-size:22px;font-weight:600;letter-spacing:.1em}
 .streak{font-size:13px;color:var(--ai)}
-main{padding:0 20px calc(96px + env(safe-area-inset-bottom))}
+main{flex:1;min-height:0;padding:0 20px calc(76px + env(safe-area-inset-bottom));overflow-y:auto}
+/* 練習頁：整頁不上下捲動、題目區垂直置中；打開「調整」時才允許捲動看設定 */
+body.prc main{overflow:hidden}
+body.prc.setopen main{overflow-y:auto}
+#v-practice:not([hidden]){display:flex;flex-direction:column}
+body.prc:not(.setopen) #v-practice{height:100%}
+#quiz{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
 
 /* 設定 */
@@ -189,19 +195,21 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
           <div id="rowPicker"></div></div>
       </div>
 
-      <div class="sheet" id="sheet">
-        <div class="kana" id="kana"></div>
-        <svg class="maru" id="maru" viewBox="0 0 200 200" aria-hidden="true"><path id="maruPath"/></svg>
+      <div class="quiz" id="quiz">
+        <div class="sheet" id="sheet">
+          <div class="kana" id="kana"></div>
+          <svg class="maru" id="maru" viewBox="0 0 200 200" aria-hidden="true"><path id="maruPath"/></svg>
+        </div>
+        <div class="under">
+          <button class="listen" id="listenBtn">▶ 聽發音</button>
+          <span class="tally" id="tally"></span>
+        </div>
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+        <button class="ex" id="exBtn" hidden></button>
+        <div class="opts" id="opts"></div>
+        <button class="next" id="nextBtn" hidden>下一題</button>
+        <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
       </div>
-      <div class="under">
-        <button class="listen" id="listenBtn">▶ 聽發音</button>
-        <span class="tally" id="tally"></span>
-      </div>
-      <p class="feedback" id="feedback" aria-live="polite"></p>
-      <button class="ex" id="exBtn" hidden></button>
-      <div class="opts" id="opts"></div>
-      <button class="next" id="nextBtn" hidden>下一題</button>
-      <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
     </section>
 
     <section id="v-chart" class="chart" hidden>
@@ -397,6 +405,7 @@ function speak(text){
 
 /* ---------- 練習 ---------- */
 let cur=null,lastId=null,answered=false,sessionN=0,sessionOK=0,advanceTimer=null;
+let history=[],hi=-1,blockClickUntil=0;
 
 function getPool(){
   const {script,rows}=state.settings;
@@ -459,65 +468,100 @@ function renderKana(reveal){
   }
 }
 
-function nextQuestion(){
+/* 新出一題（附加到歷史尾端）。答對自動換題與左滑到最新題後都會呼叫 */
+function newQuestion(){
   clearTimeout(advanceTimer);
-  answered=false;
   const pool=getPool();
-  cur=pickNext(pool);lastId=cur.id;
+  const item=pickNext(pool);lastId=item.id;
   const hear=state.settings.mode==='hear';
-  renderKana(false);
-  showMaru(false);
-  $('#feedback').textContent='';$('#feedback').className='feedback';
-  $('#nextBtn').hidden=true;
-  $('#exBtn').hidden=true;
+  history.push({item,hear,options:buildOptions(item,pool),answered:false,pickedId:null,ok:false,exWord:null,fbText:'',fbClass:'feedback'});
+  if(history.length>30)history.shift();
+  hi=history.length-1;
+  render('none');
+}
+
+/* 依 history[hi] 重畫整個題目區；answered 的題目為唯讀複習狀態 */
+function render(anim){
+  clearTimeout(advanceTimer);
+  const e=history[hi];
+  cur=e.item;answered=e.answered;exWord=e.exWord;
+  const hear=e.hear;
+  renderKana(e.answered);
+  showMaru(e.answered&&e.ok);
+  $('#feedback').className=e.fbClass;$('#feedback').textContent=e.fbText;
   $('#listenBtn').hidden=hear;
   const box=$('#opts');box.innerHTML='';
-  buildOptions(cur,pool).forEach(o=>{
+  e.options.forEach(o=>{
     const b=document.createElement('button');
     b.className='opt'+(hear?' kana-opt':'');
     b.textContent=hear?o.kana:o.romaji;
-    b.onclick=()=>answer(o,b);
     b.dataset.id=o.id;
+    if(e.answered){
+      if(o.id===e.item.id)b.classList.add('right');
+      else if(o.id===e.pickedId)b.classList.add('wrong');
+      b.disabled=true;
+    }else{
+      b.onclick=()=>answer(o);
+    }
     box.appendChild(b);
   });
+  if(e.exWord){const ex=$('#exBtn');ex.innerHTML=`例字<span class="ek">${e.exWord.r}</span>${e.exWord.m}　▶`;ex.hidden=false;}
+  else $('#exBtn').hidden=true;
+  $('#nextBtn').hidden=!e.answered;
   $('#tally').textContent=sessionN?`本回合 ${sessionOK}/${sessionN}`:'';
-  if(hear)speak(moraSpeech(cur.kana));
+  if(anim&&anim!=='none')slideAnim(anim);
+  if(hear&&!e.answered)speak(moraSpeech(cur.kana));
 }
 
-function answer(o,btn){
-  if(answered)return;answered=true;
-  const ok=o.id===cur.id;
+function answer(o){
+  if(Date.now()<blockClickUntil)return;      /* 剛滑動過，忽略誤觸 */
+  const e=history[hi];
+  if(e.answered)return;
+  const ok=o.id===e.item.id;
+  e.answered=true;e.ok=ok;e.pickedId=o.id;
   sessionN++;if(ok)sessionOK++;
   state.stats.total++;if(ok)state.stats.correct++;
-  state.lv[cur.id]=ok?Math.min(5,lvl(cur.id)+1):Math.max(0,lvl(cur.id)-2);
+  state.lv[e.item.id]=ok?Math.min(5,lvl(e.item.id)+1):Math.max(0,lvl(e.item.id)-2);
   const t=dateKey(new Date());state.days[t]=(state.days[t]||0)+1;
+  const hear=e.hear;
+  e.fbClass=ok?'feedback good':'feedback bad';
+  e.fbText=ok?(hear?`${e.item.kana}　${e.item.romaji}`:'')
+             :(hear?`正確是 ${e.item.kana}（${e.item.romaji}），你選的是 ${o.kana}（${o.romaji}）`
+                   :`${e.item.kana} 唸 ${e.item.romaji}，${o.romaji} 是 ${sameScriptKana(o,e.item)}`);
+  e.exWord=pickWord(e.item.kana);
   save();
-
-  const hear=state.settings.mode==='hear';
-  document.querySelectorAll('.opt').forEach(b=>{if(b.dataset.id===cur.id)b.classList.add('right')});
-  renderKana(true);
-  const fb=$('#feedback');
-  if(ok){
-    showMaru(true);
-    fb.className='feedback good';fb.textContent=hear?`${cur.kana}　${cur.romaji}`:'';
-    speak(moraSpeech(cur.kana));
-    advanceTimer=setTimeout(nextQuestion,1100);
-  }else{
-    btn.classList.add('wrong');
-    fb.className='feedback bad';
-    fb.textContent=hear?`正確是 ${cur.kana}（${cur.romaji}），你選的是 ${o.kana}（${o.romaji}）`
-                       :`${cur.kana} 唸 ${cur.romaji}，${o.romaji} 是 ${sameScriptKana(o,cur)}`;
-    speak(moraSpeech(cur.kana));
-    $('#nextBtn').hidden=false;
-  }
-  exWord=pickWord(cur.kana);
-  if(exWord){
-    const ex=$('#exBtn');
-    ex.innerHTML=`例字<span class="ek">${exWord.r}</span>${exWord.m}　▶`;
-    ex.hidden=false;
-  }
-  $('#tally').textContent=`本回合 ${sessionOK}/${sessionN}`;
+  render('none');
+  speak(moraSpeech(e.item.kana));
+  if(ok)advanceTimer=setTimeout(newQuestion,1100);   /* 答對約 1.1 秒自動下一題 */
   updateStreakLabel();
+}
+
+/* 左滑：下一題（未作答會被擋）；右滑：回上一題複習 */
+function goNext(){
+  if(hi<history.length-1){hi++;render('next');return;}
+  if(history[hi]&&history[hi].answered)newQuestion();
+  else gateHint();
+}
+function goPrev(){
+  if(hi>0){clearTimeout(advanceTimer);hi--;render('prev');}
+}
+function restart(){history=[];hi=-1;lastId=null;newQuestion();}
+
+function gateHint(){
+  const fb=$('#feedback');
+  fb.className='feedback';fb.textContent='先作答才能看下一題';
+  slideAnim('shake');
+  setTimeout(()=>{const e=history[hi];if(e&&!e.answered&&fb.textContent==='先作答才能看下一題')fb.textContent='';},1200);
+}
+function slideAnim(kind){
+  const q=$('#quiz');
+  if(!q.animate||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(kind==='shake'){
+    q.animate([{transform:'translateX(0)'},{transform:'translateX(-9px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:240,easing:'ease-out'});
+    return;
+  }
+  const from=kind==='next'?'26px':'-26px';
+  q.animate([{transform:`translateX(${from})`,opacity:.3},{transform:'translateX(0)',opacity:1}],{duration:190,easing:'ease-out'});
 }
 function sameScriptKana(o,ref){
   const it=ITEMS.find(x=>x.script===ref.script&&x.sound===o.sound);
@@ -867,7 +911,7 @@ function syncSettingsUI(){
 function settingsChanged(){
   syncSettingsUI();save();
   sessionN=0;sessionOK=0;lastId=null;
-  nextQuestion();
+  restart();
 }
 document.querySelectorAll('.setseg').forEach(seg=>{
   seg.addEventListener('click',e=>{
@@ -894,9 +938,23 @@ $('#setToggle').onclick=()=>{
   const p=$('#setPanel'),open=p.hidden;
   p.hidden=!open;$('#setToggle').setAttribute('aria-expanded',open);
   $('#setLink').textContent=open?'收起':'調整';
+  document.body.classList.toggle('setopen',open);
 };
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
-$('#nextBtn').onclick=nextQuestion;
+$('#nextBtn').onclick=goNext;
+
+/* 練習頁左右滑動換題 */
+(function(){
+  const q=$('#quiz');let sx=0,sy=0;
+  q.addEventListener('touchstart',e=>{const t=e.changedTouches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+  q.addEventListener('touchend',e=>{
+    const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+    if(Math.abs(dx)>=48&&Math.abs(dx)>Math.abs(dy)*1.3){
+      blockClickUntil=Date.now()+450;
+      if(dx<0)goNext();else goPrev();
+    }
+  },{passive:true});
+})();
 
 /* ---------- 五十音表 ---------- */
 function renderChart(){
@@ -978,7 +1036,7 @@ $('#importBtn').onclick=()=>{
     if(!s||typeof s.lv!=='object')throw new Error('bad');
     applyLoaded(s);save();
     sessionN=0;sessionOK=0;lastId=null;
-    syncSettingsUI();updateStreakLabel();renderProgress();nextQuestion();
+    syncSettingsUI();updateStreakLabel();renderProgress();restart();
     box.value='';msg.textContent='已還原進度。';
   }catch(e){msg.textContent='這段進度碼讀不出來，確認有沒有完整複製。'}
 };
@@ -1002,8 +1060,10 @@ $('#resetBtn').onclick=()=>{
 function show(view){
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===view));
   ['practice','chart','progress'].forEach(v=>$('#v-'+v).hidden=v!==view);
+  document.body.classList.toggle('prc',view==='practice');
   if(view==='chart')renderChart();
   if(view==='progress')renderProgress();
+  const m=document.querySelector('main');if(m)m.scrollTop=0;
   window.scrollTo?.(0,0);
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
@@ -1020,7 +1080,7 @@ function updateStreakLabel(){
   if(!storageOK)showStoreWarn();
   syncSettingsUI();updateStreakLabel();
   show('practice');
-  nextQuestion();
+  restart();
   setTimeout(()=>{if('speechSynthesis' in window&&!jaVoice)$('#voiceNote').hidden=false;
                   if(!('speechSynthesis' in window)){$('#voiceNote').hidden=false;$('#voiceNote').textContent='這個瀏覽器不支援語音播放，可以改用 Safari 或 Chrome 開啟。'}},1500);
 })();
