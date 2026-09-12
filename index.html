@@ -34,12 +34,27 @@ header{display:flex;justify-content:space-between;align-items:baseline;padding:c
 header h1{font-family:var(--sys);font-size:22px;font-weight:600;letter-spacing:.1em}
 .streak{font-size:13px;color:var(--ai)}
 main{flex:1;min-height:0;padding:0 20px calc(76px + env(safe-area-inset-bottom));overflow-y:auto}
-/* 練習頁：整頁不上下捲動、題目區垂直置中；打開「調整」時才允許捲動看設定 */
-body.prc main{overflow:hidden}
-body.prc.setopen main{overflow-y:auto}
-#v-practice:not([hidden]){display:flex;flex-direction:column}
-body.prc:not(.setopen) #v-practice{height:100%;touch-action:none}
+/* 練習頁：開始／結算畫面可捲動；答題中整頁鎖定、題目區垂直置中 */
+body.prc main{overflow-y:auto}
+body.prc.playing main{overflow:hidden}
+#v-practice:not([hidden]){display:flex;flex-direction:column;min-height:100%}
+body.prc.playing #v-practice{height:100%;touch-action:none}
+#p-play:not([hidden]){display:flex;flex-direction:column;flex:1;min-height:0}
 #quiz{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+/* 開始畫面 */
+.setup-h{font-size:17px;font-weight:600;color:var(--ai);margin:8px 0 14px}
+#p-setup{padding-bottom:24px}
+.start{display:block;width:100%;margin-top:18px;padding:15px;background:var(--ai);color:#fff;border-radius:8px;font-size:17px;font-weight:600}
+/* 答題列 */
+.playbar{display:flex;justify-content:space-between;align-items:center;padding:8px 0;flex-shrink:0}
+.progress{font-size:14px;color:var(--muted)}
+.quit{color:var(--ai);font-size:14px;padding:4px 0}
+/* 結算畫面 */
+.result{padding:48px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.result-h{font-size:18px;font-weight:600}
+.result-score{font-size:36px;font-weight:700;color:var(--ai);margin-top:8px}
+.result-sub{font-size:15px;color:var(--muted)}
+.result .start{max-width:220px;margin-top:24px}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
 
 /* 設定 */
@@ -186,34 +201,51 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
 
     <section id="v-practice" hidden>
       <p class="warn store-warn" hidden>目前無法自動儲存。到「進度」頁可以複製進度碼備份。</p>
-      <button class="setrow" id="setToggle" aria-expanded="false" aria-controls="setPanel">
-        <span id="setSummary"></span><span class="setlink" id="setLink">調整</span>
-      </button>
-      <div class="setpanel" id="setPanel" hidden>
+
+      <!-- 開始畫面 -->
+      <div id="p-setup">
+        <h2 class="setup-h">開始練習</h2>
         <div class="field"><span class="flabel">文字</span>
           <div class="seg setseg" data-key="script"><button data-v="h">平假名</button><button data-v="k">片假名</button><button data-v="m">混合</button></div></div>
         <div class="field"><span class="flabel">模式</span>
           <div class="seg setseg" data-key="mode"><button data-v="see">看字選音</button><button data-v="hear">聽音選字</button></div></div>
         <div class="field"><span class="flabel">答對</span>
           <div class="seg setseg" data-key="auto"><button data-v="on">自動下一題</button><button data-v="off">手動</button></div></div>
+        <div class="field"><span class="flabel">題數</span>
+          <div class="seg" id="countSeg"><button data-v="10">10</button><button data-v="20">20</button><button data-v="30">30</button><button data-v="50">50</button><button data-v="inf">不限</button></div></div>
         <div class="field col"><span class="flabel">要考哪幾行（只選已經學過的）</span>
           <div id="rowPicker"></div></div>
+        <button class="start" id="startBtn">開始</button>
       </div>
 
-      <div class="quiz" id="quiz">
-        <div class="sheet" id="sheet">
-          <div class="kana" id="kana"></div>
-          <svg class="maru" id="maru" viewBox="0 0 200 200" aria-hidden="true"><path id="maruPath"/></svg>
+      <!-- 答題畫面 -->
+      <div id="p-play" hidden>
+        <div class="playbar"><span class="progress" id="progress"></span><button class="quit" id="quitBtn">結束</button></div>
+        <div class="quiz" id="quiz">
+          <div class="sheet" id="sheet">
+            <div class="kana" id="kana"></div>
+            <svg class="maru" id="maru" viewBox="0 0 200 200" aria-hidden="true"><path id="maruPath"/></svg>
+          </div>
+          <div class="under">
+            <button class="listen" id="listenBtn">▶ 聽發音</button>
+            <span class="tally" id="tally"></span>
+          </div>
+          <p class="feedback" id="feedback" aria-live="polite"></p>
+          <button class="ex" id="exBtn" hidden></button>
+          <div class="opts" id="opts"></div>
+          <button class="next" id="nextBtn" hidden><span class="bar" id="nextBar"></span><span class="next-label">下一題</span></button>
+          <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
         </div>
-        <div class="under">
-          <button class="listen" id="listenBtn">▶ 聽發音</button>
-          <span class="tally" id="tally"></span>
+      </div>
+
+      <!-- 結算畫面 -->
+      <div id="p-result" hidden>
+        <div class="result">
+          <h2 class="result-h">本回合結束</h2>
+          <div class="result-score" id="resultScore"></div>
+          <div class="result-sub" id="resultSub"></div>
+          <button class="start" id="againBtn">再一回合</button>
         </div>
-        <p class="feedback" id="feedback" aria-live="polite"></p>
-        <button class="ex" id="exBtn" hidden></button>
-        <div class="opts" id="opts"></div>
-        <button class="next" id="nextBtn" hidden><span class="bar" id="nextBar"></span><span class="next-label">下一題</span></button>
-        <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
       </div>
     </section>
 
@@ -351,7 +383,7 @@ const MILESTONES=[
 
 /* ---------- 狀態與儲存 ---------- */
 const KEY='kana-trainer-v1';
-const defaultState=()=>({lv:{},stats:{total:0,correct:0},days:{},ms:{},settings:{script:'h',rows:['seion-0','seion-1'],mode:'see',auto:'on'},chartScript:'h'});
+const defaultState=()=>({lv:{},stats:{total:0,correct:0},days:{},ms:{},settings:{script:'h',rows:['seion-0','seion-1'],mode:'see',auto:'on',count:'20'},chartScript:'h'});
 let state=defaultState();
 
 function applyLoaded(s){
@@ -411,6 +443,7 @@ function speak(text){
 /* ---------- 練習 ---------- */
 let cur=null,lastId=null,answered=false,sessionN=0,sessionOK=0,advanceTimer=null;
 let history=[],hi=-1,blockClickUntil=0;
+let roundTotal=Infinity,roundIssued=0,phase='setup';
 
 function getPool(){
   const {script,rows}=state.settings;
@@ -479,8 +512,8 @@ function newQuestion(){
   const pool=getPool();
   const item=pickNext(pool);lastId=item.id;
   const hear=state.settings.mode==='hear';
-  history.push({item,hear,options:buildOptions(item,pool),answered:false,pickedId:null,ok:false,exWord:null,fbText:'',fbClass:'feedback'});
-  if(history.length>30)history.shift();
+  history.push({item,hear,options:buildOptions(item,pool),answered:false,pickedId:null,ok:false,exWord:null,fbText:'',fbClass:'feedback',ord:++roundIssued});
+  if(history.length>60)history.shift();
   hi=history.length-1;
   render('none');
 }
@@ -513,7 +546,10 @@ function render(anim){
   if(e.exWord){const ex=$('#exBtn');ex.innerHTML=`例字<span class="ek">${e.exWord.r}</span>${e.exWord.m}　▶`;ex.hidden=false;}
   else $('#exBtn').hidden=true;
   $('#nextBtn').hidden=!e.answered;
+  const lastOfRound=e.answered&&hi===history.length-1&&roundComplete();
+  $('#nextBtn').querySelector('.next-label').textContent=lastOfRound?'看結果':'下一題';
   $('#tally').textContent=sessionN?`本回合 ${sessionOK}/${sessionN}`:'';
+  $('#progress').textContent=roundTotal===Infinity?`第 ${e.ord} 題`:`第 ${e.ord}／${roundTotal} 題`;
   if(anim&&anim!=='none')slideAnim(anim);
   if(hear&&!e.answered)speak(moraSpeech(cur.kana));
 }
@@ -547,7 +583,7 @@ function startCountdown(ms){
   bar.className='bar';bar.style.setProperty('--dur',ms+'ms');
   bar.getBoundingClientRect();                                 /* 強制 reflow，動畫才會重跑 */
   if(!matchMedia('(prefers-reduced-motion: reduce)').matches)bar.classList.add('run');
-  advanceTimer=setTimeout(newQuestion,ms);
+  advanceTimer=setTimeout(advance,ms);
 }
 function stopCountdown(){
   clearTimeout(advanceTimer);
@@ -557,13 +593,39 @@ function stopCountdown(){
 /* 左滑：下一題（未作答會被擋）；右滑：回上一題複習 */
 function goNext(){
   if(hi<history.length-1){hi++;render('next');return;}
-  if(history[hi]&&history[hi].answered)newQuestion();
+  if(history[hi]&&history[hi].answered)advance();
   else gateHint();
 }
 function goPrev(){
   if(hi>0){stopCountdown();hi--;render('prev');}
 }
-function restart(){history=[];hi=-1;lastId=null;newQuestion();}
+function roundComplete(){return roundTotal!==Infinity&&sessionN>=roundTotal;}
+function advance(){if(roundComplete())showResult();else newQuestion();}
+
+/* 回合流程 */
+function setPhase(p){
+  phase=p;
+  $('#p-setup').hidden=p!=='setup';
+  $('#p-play').hidden=p!=='play';
+  $('#p-result').hidden=p!=='result';
+  document.body.classList.toggle('playing',p==='play');
+  if(p!=='play')stopCountdown();
+  const m=document.querySelector('main');if(m&&p!=='play')m.scrollTop=0;
+}
+function startRound(){
+  const c=state.settings.count||'20';
+  roundTotal=c==='inf'?Infinity:parseInt(c,10);
+  roundIssued=0;sessionN=0;sessionOK=0;lastId=null;history=[];hi=-1;
+  setPhase('play');
+  newQuestion();
+}
+function showResult(){
+  stopCountdown();
+  const pct=sessionN?Math.round(sessionOK/sessionN*100):0;
+  $('#resultScore').textContent=`答對 ${sessionOK}／${sessionN}`;
+  $('#resultSub').textContent=`正確率 ${pct}%`;
+  setPhase('result');
+}
 
 function gateHint(){
   const fb=$('#feedback');
@@ -917,19 +979,21 @@ function renderRowPicker(){
   }
   $('#rowPicker').innerHTML=html;
 }
+function syncCountUI(){
+  const c=state.settings.count||'20';
+  document.querySelectorAll('#countSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===c));
+  $('#startBtn').textContent=c==='inf'?'開始（不限）':`開始（${c} 題）`;
+}
 function syncSettingsUI(){
   document.querySelectorAll('.setseg').forEach(seg=>{
     const key=seg.dataset.key;
     seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',state.settings[key]===b.dataset.v));
   });
   renderRowPicker();
-  const s=state.settings;
-  $('#setSummary').textContent=`${SCRIPT_NAME[s.script]}／${rangeSummary()}／${MODE_NAME[s.mode]}`;
+  syncCountUI();
 }
 function settingsChanged(){
   syncSettingsUI();save();
-  sessionN=0;sessionOK=0;lastId=null;
-  restart();
 }
 document.querySelectorAll('.setseg').forEach(seg=>{
   seg.addEventListener('click',e=>{
@@ -952,12 +1016,13 @@ $('#rowPicker').addEventListener('click',e=>{
   state.settings.rows=ROWS.map(r=>r.id).filter(id=>rows.includes(id));
   settingsChanged();
 });
-$('#setToggle').onclick=()=>{
-  const p=$('#setPanel'),open=p.hidden;
-  p.hidden=!open;$('#setToggle').setAttribute('aria-expanded',open);
-  $('#setLink').textContent=open?'收起':'調整';
-  document.body.classList.toggle('setopen',open);
-};
+$('#countSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  state.settings.count=b.dataset.v;save();syncCountUI();
+});
+$('#startBtn').onclick=startRound;
+$('#againBtn').onclick=()=>setPhase('setup');
+$('#quitBtn').onclick=()=>{if(sessionN>0)showResult();else setPhase('setup')};
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
 $('#nextBtn').onclick=goNext;
 
@@ -1058,7 +1123,7 @@ $('#importBtn').onclick=()=>{
     if(!s||typeof s.lv!=='object')throw new Error('bad');
     applyLoaded(s);save();
     sessionN=0;sessionOK=0;lastId=null;
-    syncSettingsUI();updateStreakLabel();renderProgress();restart();
+    syncSettingsUI();updateStreakLabel();renderProgress();setPhase('setup');
     box.value='';msg.textContent='已還原進度。';
   }catch(e){msg.textContent='這段進度碼讀不出來，確認有沒有完整複製。'}
 };
@@ -1084,6 +1149,7 @@ function show(view){
   document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===view));
   ['practice','chart','progress'].forEach(v=>$('#v-'+v).hidden=v!==view);
   document.body.classList.toggle('prc',view==='practice');
+  document.body.classList.toggle('playing',view==='practice'&&phase==='play');
   if(view==='chart')renderChart();
   if(view==='progress')renderProgress();
   const m=document.querySelector('main');if(m)m.scrollTop=0;
@@ -1102,8 +1168,8 @@ function updateStreakLabel(){
   $('#loading').hidden=true;
   if(!storageOK)showStoreWarn();
   syncSettingsUI();updateStreakLabel();
+  setPhase('setup');
   show('practice');
-  restart();
   setTimeout(()=>{if('speechSynthesis' in window&&!jaVoice)$('#voiceNote').hidden=false;
                   if(!('speechSynthesis' in window)){$('#voiceNote').hidden=false;$('#voiceNote').textContent='這個瀏覽器不支援語音播放，可以改用 Safari 或 Chrome 開啟。'}},1500);
 })();

@@ -18,7 +18,7 @@
 └── apple-touch-icon.png
 ```
 
-目前版本：**v1.4**，`sw.js` 快取版本 `kana-v8`。App 名稱為 **KanA**，圖示為紅底白「あ」，全站使用 iPhone 系統字型。
+目前版本：**v1.5**，`sw.js` 快取版本 `kana-v9`。App 名稱為 **KanA**，圖示為紅底白「あ」，全站使用 iPhone 系統字型。
 
 ---
 
@@ -103,3 +103,4 @@
 | v1.2 | kana-v6 | 新增「答對：自動下一題／手動」設定（預設自動）；自動模式下「下一題」按鈕加上 1.8 秒倒數進度條，時間到才跳題（原 1.1 秒延長為 1.8 秒）；點例字或切換分頁會中止倒數 |
 | v1.3 | kana-v7 | 練習頁鎖定：禁止雙指縮放（viewport `maximum-scale=1, user-scalable=no`）與上下捲動／回彈（`#v-practice` `touch-action:none`、`overscroll-behavior:none`）；左右滑動換題不受影響 |
 | v1.4 | kana-v8 | 修正 v1.3 的 `user-scalable=no` 在 iOS 把畫面卡在縮小比例的問題：改回一般 viewport，改用 JS 攔截 `gesturestart` 等手勢＋`touch-action:manipulation` 完全禁止縮放 |
+| v1.5 | kana-v9 | 練習頁改為回合制：開始畫面（設定＋題數 10／20／30／50／不限，預設 20）→ 按「開始」答題（上方顯示「第 n／N 題」）→ 做完顯示結算（答對 X／N、正確率）＋「再一回合」。設定移到開始畫面、變更不再立即出題；「不限」按「結束」才結算 |
