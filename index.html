@@ -97,6 +97,12 @@ body.prc.playing #v-practice{height:100%;touch-action:none}
 .opt.kana-opt{font-family:var(--sys);font-size:30px}
 .opt.right{border-color:var(--take);background:#E8F2EA;color:var(--take)}
 .opt.wrong{border-color:var(--shu);background:#FBEAE6;color:var(--shu)}
+.typerow{display:flex;gap:10px;margin-top:8px}
+.typein{flex:1;min-width:0;height:56px;padding:0 14px;border:1.5px solid var(--line);border-radius:6px;background:var(--sheet);color:var(--ink);font-size:18px;font-family:var(--sys)}
+.typein:focus{outline:none;border-color:var(--ai)}
+.typein.right{border-color:var(--take);background:#E8F2EA;color:var(--take)}
+.typein.wrong{border-color:var(--shu);background:#FBEAE6;color:var(--shu)}
+.typego{flex-shrink:0;padding:0 20px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
 .next{position:relative;overflow:hidden;display:block;width:100%;margin-top:14px;padding:14px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
 .next .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.26);width:0}
 .next .bar.run{width:100%;transition:width var(--dur) linear}
@@ -208,7 +214,7 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
         <div class="field"><span class="flabel">文字</span>
           <div class="seg setseg" data-key="script"><button data-v="h">平假名</button><button data-v="k">片假名</button><button data-v="m">混合</button></div></div>
         <div class="field"><span class="flabel">模式</span>
-          <div class="seg setseg" data-key="mode"><button data-v="see">看字選音</button><button data-v="hear">聽音選字</button></div></div>
+          <div class="seg setseg" data-key="mode"><button data-v="see">看字選音</button><button data-v="hear">聽音選字</button><button data-v="type">打拼音</button></div></div>
         <div class="field"><span class="flabel">答對</span>
           <div class="seg setseg" data-key="auto"><button data-v="on">自動下一題</button><button data-v="off">手動</button></div></div>
         <div class="field"><span class="flabel">題數</span>
@@ -233,6 +239,10 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
           <p class="feedback" id="feedback" aria-live="polite"></p>
           <button class="ex" id="exBtn" hidden></button>
           <div class="opts" id="opts"></div>
+          <div class="typerow" id="typeRow" hidden>
+            <input class="typein" id="typeIn" type="text" inputmode="latin" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="打羅馬拼音">
+            <button class="typego" id="typeGo">送出</button>
+          </div>
           <button class="next" id="nextBtn" hidden><span class="bar" id="nextBar"></span><span class="next-label">下一題</span></button>
           <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
         </div>
@@ -339,7 +349,7 @@ const YOUON=[
 const GROUPS={seion:SEION,daku:DAKU,youon:YOUON};
 const GROUP_NAME={seion:'清音',daku:'濁音',youon:'拗音'};
 const SCRIPT_NAME={h:'平假名',k:'片假名',m:'混合'};
-const MODE_NAME={see:'看字選音',hear:'聽音選字'};
+const MODE_NAME={see:'看字選音',hear:'聽音選字',type:'看字打拼音'};
 
 const toKata=s=>s.replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
 
@@ -512,7 +522,7 @@ function newQuestion(){
   const pool=getPool();
   const item=pickNext(pool);lastId=item.id;
   const hear=state.settings.mode==='hear';
-  history.push({item,hear,options:buildOptions(item,pool),answered:false,pickedId:null,ok:false,exWord:null,fbText:'',fbClass:'feedback',ord:++roundIssued});
+  history.push({item,mode:state.settings.mode,hear,options:buildOptions(item,pool),answered:false,pickedId:null,typed:'',ok:false,exWord:null,fbText:'',fbClass:'feedback',ord:++roundIssued});
   if(history.length>60)history.shift();
   hi=history.length-1;
   render('none');
@@ -523,13 +533,13 @@ function render(anim){
   stopCountdown();
   const e=history[hi];
   cur=e.item;answered=e.answered;exWord=e.exWord;
-  const hear=e.hear;
+  const hear=e.hear,typing=e.mode==='type';
   renderKana(e.answered);
   showMaru(e.answered&&e.ok);
   $('#feedback').className=e.fbClass;$('#feedback').textContent=e.fbText;
   $('#listenBtn').hidden=hear;
-  const box=$('#opts');box.innerHTML='';
-  e.options.forEach(o=>{
+  const box=$('#opts');box.innerHTML='';box.hidden=typing;
+  if(!typing)e.options.forEach(o=>{
     const b=document.createElement('button');
     b.className='opt'+(hear?' kana-opt':'');
     b.textContent=hear?o.kana:o.romaji;
@@ -543,6 +553,14 @@ function render(anim){
     }
     box.appendChild(b);
   });
+  $('#typeRow').hidden=!typing;
+  if(typing){
+    const inp=$('#typeIn');
+    inp.value=e.answered?e.typed:'';
+    inp.disabled=e.answered;
+    inp.className='typein'+(e.answered?(e.ok?' right':' wrong'):'');
+    $('#typeGo').disabled=e.answered;
+  }
   if(e.exWord){const ex=$('#exBtn');ex.innerHTML=`例字<span class="ek">${e.exWord.r}</span>${e.exWord.m}　▶`;ex.hidden=false;}
   else $('#exBtn').hidden=true;
   $('#nextBtn').hidden=!e.answered;
@@ -552,6 +570,7 @@ function render(anim){
   $('#progress').textContent=roundTotal===Infinity?`第 ${e.ord} 題`:`第 ${e.ord}／${roundTotal} 題`;
   if(anim&&anim!=='none')slideAnim(anim);
   if(hear&&!e.answered)speak(moraSpeech(cur.kana));
+  if(typing&&!e.answered)$('#typeIn').focus();
 }
 
 function answer(o){
@@ -576,6 +595,40 @@ function answer(o){
   if(ok&&state.settings.auto==='on')startCountdown(AUTO_MS);   /* 答對後倒數自動下一題 */
   updateStreakLabel();
 }
+
+/* 打拼音模式 */
+const normRomaji=s=>(s||'').trim().toLowerCase().replace(/\s+/g,'');
+function acceptedRomaji(r){
+  const s=new Set([r]);
+  if(r==='wo')s.add('o');            /* を */
+  if(r==='n')s.add('nn');            /* ん */
+  const pairs=[['shi','si'],['chi','ti'],['tsu','tu'],['fu','hu'],['ji','zi'],
+    ['sha','sya'],['shu','syu'],['sho','syo'],['cha','tya'],['chu','tyu'],['cho','tyo'],
+    ['ja','zya'],['ju','zyu'],['jo','zyo'],['ja','jya'],['ju','jyu'],['jo','jyo']];
+  for(const [a,b] of pairs){if(r===a)s.add(b);if(r===b)s.add(a);}
+  return s;
+}
+const romajiMatch=(input,item)=>acceptedRomaji(item.romaji).has(normRomaji(input));
+
+function answerType(v){
+  const e=history[hi];
+  if(e.answered)return;
+  const ok=romajiMatch(v,e.item);
+  e.answered=true;e.ok=ok;e.typed=normRomaji(v);
+  sessionN++;if(ok)sessionOK++;
+  state.stats.total++;if(ok)state.stats.correct++;
+  state.lv[e.item.id]=ok?Math.min(5,lvl(e.item.id)+1):Math.max(0,lvl(e.item.id)-2);
+  const t=dateKey(new Date());state.days[t]=(state.days[t]||0)+1;
+  e.fbClass=ok?'feedback good':'feedback bad';
+  e.fbText=ok?`${e.item.kana}　${e.item.romaji}`:`正確是 ${e.item.romaji}，你打的是 ${e.typed}`;
+  e.exWord=pickWord(e.item.kana);
+  save();
+  render('none');
+  speak(moraSpeech(e.item.kana));
+  if(ok&&state.settings.auto==='on')startCountdown(AUTO_MS);
+  updateStreakLabel();
+}
+function submitType(){const v=$('#typeIn').value;if(!normRomaji(v))return;answerType(v);}
 
 const AUTO_MS=1800;
 function startCountdown(ms){
@@ -1025,6 +1078,8 @@ $('#againBtn').onclick=()=>setPhase('setup');
 $('#quitBtn').onclick=()=>{if(sessionN>0)showResult();else setPhase('setup')};
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
 $('#nextBtn').onclick=goNext;
+$('#typeGo').onclick=submitType;
+$('#typeIn').addEventListener('keydown',e=>{if(e.key==='Enter')submitType();});
 
 /* 練習頁左右滑動換題 */
 (function(){
