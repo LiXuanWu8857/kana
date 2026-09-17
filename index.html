@@ -41,6 +41,10 @@ body.prc.playing main{overflow:hidden}
 body.prc.playing #v-practice{height:100%;touch-action:none}
 #p-play:not([hidden]){display:flex;flex-direction:column;flex:1;min-height:0}
 #quiz{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+/* 打字模式：叫出鍵盤時改為靠上對齊＋可捲動，避免題目被鍵盤推出畫面 */
+body.prc.playing.typing main{overflow-y:auto}
+body.prc.playing.typing #v-practice{height:auto;touch-action:auto}
+body.prc.playing.typing #quiz{flex:none;justify-content:flex-start;padding-top:8px}
 /* 開始畫面 */
 .setup-h{font-size:17px;font-weight:600;color:var(--ai);margin:8px 0 14px}
 #p-setup{padding-bottom:24px}
@@ -534,6 +538,7 @@ function render(anim){
   const e=history[hi];
   cur=e.item;answered=e.answered;exWord=e.exWord;
   const hear=e.hear,typing=e.mode==='type';
+  document.body.classList.toggle('typing',typing);
   renderKana(e.answered);
   showMaru(e.answered&&e.ok);
   $('#feedback').className=e.fbClass;$('#feedback').textContent=e.fbText;
@@ -662,7 +667,7 @@ function setPhase(p){
   $('#p-play').hidden=p!=='play';
   $('#p-result').hidden=p!=='result';
   document.body.classList.toggle('playing',p==='play');
-  if(p!=='play')stopCountdown();
+  if(p!=='play'){stopCountdown();document.body.classList.remove('typing');}
   const m=document.querySelector('main');if(m&&p!=='play')m.scrollTop=0;
 }
 function startRound(){
