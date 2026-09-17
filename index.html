@@ -41,10 +41,13 @@ body.prc.playing main{overflow:hidden}
 body.prc.playing #v-practice{height:100%;touch-action:none}
 #p-play:not([hidden]){display:flex;flex-direction:column;flex:1;min-height:0}
 #quiz{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
-/* 打字模式：叫出鍵盤時改為靠上對齊＋可捲動，避免題目被鍵盤推出畫面 */
-body.prc.playing.typing main{overflow-y:auto}
-body.prc.playing.typing #v-practice{height:auto;touch-action:auto}
-body.prc.playing.typing #quiz{flex:none;justify-content:flex-start;padding-top:8px}
+/* 打字模式：縮小練習格讓內建鍵盤放得下（維持鎖定置中） */
+body.playing.typing .sheet{width:min(56vw,200px);margin:14px auto 8px}
+body.playing.typing .kana{font-size:min(30vw,112px)}
+body.playing.typing .kana.two{font-size:min(20vw,74px)}
+/* 答題時隱藏底部分頁列、貼底 */
+body.playing nav{display:none}
+body.playing main{padding-bottom:env(safe-area-inset-bottom)}
 /* 開始畫面 */
 .setup-h{font-size:17px;font-weight:600;color:var(--ai);margin:8px 0 14px}
 #p-setup{padding-bottom:24px}
@@ -52,7 +55,7 @@ body.prc.playing.typing #quiz{flex:none;justify-content:flex-start;padding-top:8
 /* 答題列 */
 .playbar{display:flex;justify-content:space-between;align-items:center;padding:8px 0;flex-shrink:0}
 .progress{font-size:14px;color:var(--muted)}
-.quit{color:var(--ai);font-size:14px;padding:4px 0}
+.quit{background:var(--ai);color:#fff;font-size:13px;font-weight:600;padding:7px 16px;border-radius:8px}
 /* 結算畫面 */
 .result{padding:48px 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
 .result-h{font-size:18px;font-weight:600}
@@ -101,12 +104,20 @@ body.prc.playing.typing #quiz{flex:none;justify-content:flex-start;padding-top:8
 .opt.kana-opt{font-family:var(--sys);font-size:30px}
 .opt.right{border-color:var(--take);background:#E8F2EA;color:var(--take)}
 .opt.wrong{border-color:var(--shu);background:#FBEAE6;color:var(--shu)}
-.typerow{display:flex;gap:10px;margin-top:8px}
-.typein{flex:1;min-width:0;height:56px;padding:0 14px;border:1.5px solid var(--line);border-radius:6px;background:var(--sheet);color:var(--ink);font-size:18px;font-family:var(--sys)}
-.typein:focus{outline:none;border-color:var(--ai)}
+.typerow{display:flex;margin-top:8px}
+.typein{flex:1;min-width:0;min-height:52px;display:flex;align-items:center;padding:0 14px;border:1.5px solid var(--line);border-radius:6px;background:var(--sheet);color:var(--ink);font-size:24px;letter-spacing:.02em;font-family:var(--sys)}
+.typein.empty::before{content:"打羅馬拼音（會變成假名）";color:var(--muted);font-size:15px}
 .typein.right{border-color:var(--take);background:#E8F2EA;color:var(--take)}
 .typein.wrong{border-color:var(--shu);background:#FBEAE6;color:var(--shu)}
-.typego{flex-shrink:0;padding:0 20px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
+.keypad{flex-shrink:0;margin:10px -20px 0;padding:7px 3px calc(9px + env(safe-area-inset-bottom));background:#d1d5db;display:flex;flex-direction:column;gap:11px}
+.krow{display:flex;gap:6px;justify-content:center;padding:0 3px}
+.kkey{flex:1;max-width:34px;height:44px;border:0;border-radius:5px;background:#fff;color:#1D2230;font-size:22px;font-family:var(--sys);box-shadow:0 1px 0 rgba(0,0,0,.30)}
+.kkey:active{background:#e6e8ec}
+.krow-act{gap:8px;padding:0 3px}
+.kdel{max-width:52px;background:#aab0ba;box-shadow:0 1px 0 rgba(0,0,0,.30)}
+.kdel:active{background:#99a0ab}
+.kgo{flex:2;max-width:none;background:var(--ai);color:#fff;font-size:16px;box-shadow:0 1px 0 rgba(0,0,0,.30)}
+.keypad.done{opacity:.4;pointer-events:none}
 .next{position:relative;overflow:hidden;display:block;width:100%;margin-top:14px;padding:14px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
 .next .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.26);width:0}
 .next .bar.run{width:100%;transition:width var(--dur) linear}
@@ -244,11 +255,19 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
           <button class="ex" id="exBtn" hidden></button>
           <div class="opts" id="opts"></div>
           <div class="typerow" id="typeRow" hidden>
-            <input class="typein" id="typeIn" type="text" inputmode="latin" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="打羅馬拼音">
-            <button class="typego" id="typeGo">送出</button>
+            <div class="typein empty" id="typeDisp" aria-live="polite"></div>
           </div>
           <button class="next" id="nextBtn" hidden><span class="bar" id="nextBar"></span><span class="next-label">下一題</span></button>
           <p class="note" id="voiceNote" hidden>按了沒有聲音的話，iPhone 可到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 日文」下載日文語音。</p>
+        </div>
+        <div class="keypad" id="keypad" hidden>
+          <div class="krow" data-row="qwertyuiop"></div>
+          <div class="krow" data-row="asdfghjkl"></div>
+          <div class="krow" data-row="zxcvbnm"></div>
+          <div class="krow krow-act">
+            <button class="kkey kdel" data-act="del" aria-label="刪除">⌫</button>
+            <button class="kkey kgo" data-act="go">送出</button>
+          </div>
         </div>
       </div>
 
@@ -559,12 +578,11 @@ function render(anim){
     box.appendChild(b);
   });
   $('#typeRow').hidden=!typing;
+  $('#keypad').hidden=!typing;
   if(typing){
-    const inp=$('#typeIn');
-    inp.value=e.answered?e.typed:'';
-    inp.disabled=e.answered;
-    inp.className='typein'+(e.answered?(e.ok?' right':' wrong'):'');
-    $('#typeGo').disabled=e.answered;
+    if(!e.answered)typeBuf='';
+    renderTypeDisp();
+    $('#keypad').classList.toggle('done',e.answered);
   }
   if(e.exWord){const ex=$('#exBtn');ex.innerHTML=`例字<span class="ek">${e.exWord.r}</span>${e.exWord.m}　▶`;ex.hidden=false;}
   else $('#exBtn').hidden=true;
@@ -575,7 +593,6 @@ function render(anim){
   $('#progress').textContent=roundTotal===Infinity?`第 ${e.ord} 題`:`第 ${e.ord}／${roundTotal} 題`;
   if(anim&&anim!=='none')slideAnim(anim);
   if(hear&&!e.answered)speak(moraSpeech(cur.kana));
-  if(typing&&!e.answered)$('#typeIn').focus();
 }
 
 function answer(o){
@@ -615,17 +632,36 @@ function acceptedRomaji(r){
 }
 const romajiMatch=(input,item)=>acceptedRomaji(item.romaji).has(normRomaji(input));
 
+/* 羅馬字 → 假名（內建鍵盤即時轉換用；反查平假名表＋替代拼法，先到先得） */
+const ROM2KANA=(()=>{
+  const m={},add=(r,k)=>{if(!(r in m))m[r]=k;},put=c=>{if(c)add(c[1],c[0]);};
+  SEION.forEach(row=>row.forEach(put));
+  DAKU.forEach(row=>row.forEach(put));
+  YOUON.forEach(row=>row.forEach(put));
+  Object.keys({...m}).forEach(r=>acceptedRomaji(r).forEach(a=>add(a,m[r])));
+  return m;
+})();
+function bufToKana(buf,script){
+  let i=0,out='';
+  while(i<buf.length){
+    let hit=null;
+    for(let L=Math.min(3,buf.length-i);L>=1;L--){const k=ROM2KANA[buf.slice(i,i+L)];if(k){hit={k,L};break;}}
+    if(hit){out+=hit.k;i+=hit.L;}else{out+=buf[i];i++;}
+  }
+  return script==='k'?toKata(out):out;
+}
+
 function answerType(v){
   const e=history[hi];
   if(e.answered)return;
-  const ok=romajiMatch(v,e.item);
+  const ok=romajiMatch(v,e.item)||bufToKana(normRomaji(v),e.item.script)===e.item.kana;
   e.answered=true;e.ok=ok;e.typed=normRomaji(v);
   sessionN++;if(ok)sessionOK++;
   state.stats.total++;if(ok)state.stats.correct++;
   state.lv[e.item.id]=ok?Math.min(5,lvl(e.item.id)+1):Math.max(0,lvl(e.item.id)-2);
   const t=dateKey(new Date());state.days[t]=(state.days[t]||0)+1;
   e.fbClass=ok?'feedback good':'feedback bad';
-  e.fbText=ok?`${e.item.kana}　${e.item.romaji}`:`正確是 ${e.item.romaji}，你打的是 ${e.typed}`;
+  e.fbText=ok?`${e.item.kana}　${e.item.romaji}`:`正確是 ${e.item.kana}（${e.item.romaji}），你打的是 ${bufToKana(e.typed,e.item.script)||e.typed}`;
   e.exWord=pickWord(e.item.kana);
   save();
   render('none');
@@ -633,7 +669,12 @@ function answerType(v){
   if(ok&&state.settings.auto==='on')startCountdown(AUTO_MS);
   updateStreakLabel();
 }
-function submitType(){const v=$('#typeIn').value;if(!normRomaji(v))return;answerType(v);}
+let typeBuf='';
+function renderTypeDisp(){
+  const e=history[hi],ans=e&&e.answered,raw=ans?e.typed:typeBuf,sc=e?e.item.script:'h';
+  $('#typeDisp').textContent=raw?bufToKana(raw,sc):'';
+  $('#typeDisp').className='typein'+(ans?(e.ok?' right':' wrong'):(raw?'':' empty'));
+}
 
 const AUTO_MS=1800;
 function startCountdown(ms){
@@ -1083,8 +1124,14 @@ $('#againBtn').onclick=()=>setPhase('setup');
 $('#quitBtn').onclick=()=>{if(sessionN>0)showResult();else setPhase('setup')};
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
 $('#nextBtn').onclick=goNext;
-$('#typeGo').onclick=submitType;
-$('#typeIn').addEventListener('keydown',e=>{if(e.key==='Enter')submitType();});
+document.querySelectorAll('#keypad .krow[data-row]').forEach(r=>{r.innerHTML=[...r.dataset.row].map(c=>`<button class="kkey" data-k="${c}">${c}</button>`).join('');});
+$('#keypad').addEventListener('click',ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  const e=history[hi];if(!e||e.answered)return;
+  if(b.dataset.k){typeBuf+=b.dataset.k;renderTypeDisp();}
+  else if(b.dataset.act==='del'){typeBuf=typeBuf.slice(0,-1);renderTypeDisp();}
+  else if(b.dataset.act==='go'){if(normRomaji(typeBuf))answerType(typeBuf);}
+});
 
 /* 練習頁左右滑動換題 */
 (function(){
