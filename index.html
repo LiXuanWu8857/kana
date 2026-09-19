@@ -114,6 +114,7 @@ body.playing main{padding-bottom:env(safe-area-inset-bottom)}
 .kkey{flex:1;max-width:34px;height:44px;border:0;border-radius:5px;background:#fff;color:#1D2230;font-size:22px;font-family:var(--sys);box-shadow:0 1px 0 rgba(0,0,0,.30)}
 .kkey:active{background:#e6e8ec}
 .krow-act{gap:8px;padding:0 3px}
+.kspacer{flex:1;max-width:52px}
 .kdel{max-width:52px;background:#aab0ba;box-shadow:0 1px 0 rgba(0,0,0,.30)}
 .kdel:active{background:#99a0ab}
 .kgo{flex:1;max-width:none;background:var(--ai);color:#fff;font-size:16px;box-shadow:0 1px 0 rgba(0,0,0,.30)}
@@ -1124,7 +1125,9 @@ $('#quitBtn').onclick=()=>{if(sessionN>0)showResult();else setPhase('setup')};
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
 $('#nextBtn').onclick=goNext;
 document.querySelectorAll('#keypad .krow[data-row]').forEach(r=>{r.innerHTML=[...r.dataset.row].map(c=>`<button class="kkey" data-k="${c}">${c}</button>`).join('');});
-document.querySelector('#keypad .krow[data-row="zxcvbnm"]').insertAdjacentHTML('beforeend','<button class="kkey kdel" data-act="del" aria-label="刪除">⌫</button>');
+(()=>{const z=document.querySelector('#keypad .krow[data-row="zxcvbnm"]');
+  z.insertAdjacentHTML('afterbegin','<span class="kspacer" aria-hidden="true"></span>');
+  z.insertAdjacentHTML('beforeend','<button class="kkey kdel" data-act="del" aria-label="刪除">⌫</button>');})();
 $('#keypad').addEventListener('click',ev=>{
   const b=ev.target.closest('button');if(!b)return;
   const e=history[hi];if(!e||e.answered)return;
