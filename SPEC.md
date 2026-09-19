@@ -1,6 +1,6 @@
 # KanA（假名練習帳）— 專案規格書
 
-**目前版本：v1.7.2**（`sw.js` 快取版本 `kana-v14`，下次更新改為 `kana-v15`）
+**目前版本：v1.7.3**（`sw.js` 快取版本 `kana-v15`，下次更新改為 `kana-v16`）
 
 給 Claude Code 使用的建置規格。目標是做出一個部署在 GitHub Pages 的日文假名學習 PWA，手機優先，可加入主畫面、離線使用、自動保存進度。
 
@@ -576,9 +576,9 @@
 
 ### sw.js
 
-- `CACHE = 'kana-vN'`，install 時快取全部 6 個檔案並 `skipWaiting`
+- `CACHE = 'kana-vN'`，install 時以 `{cache:'reload'}` 略過瀏覽器快取重抓全部 6 個檔案並 `skipWaiting`（v1.7.3）
 - activate 時刪除其他版本快取並 `clients.claim`
-- fetch：只處理同源 GET；network-first，成功時更新快取，失敗時回傳快取，最後 fallback 到 `index.html`
+- fetch：只處理同源 GET；有網路時以 `{cache:'no-store'}` **一律抓最新**（避免 iOS 主畫面 App 卡在舊版，v1.7.3），成功時更新快取；沒網路時回傳快取，最後 fallback 到 `index.html`
 - **每次更新網站都要把版本號 +1**，主畫面 App 才會抓到新版
 
 ### 部署步驟
