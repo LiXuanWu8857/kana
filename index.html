@@ -116,7 +116,7 @@ body.playing main{padding-bottom:env(safe-area-inset-bottom)}
 .krow-act{gap:8px;padding:0 3px}
 .kdel{max-width:52px;background:#aab0ba;box-shadow:0 1px 0 rgba(0,0,0,.30)}
 .kdel:active{background:#99a0ab}
-.kgo{flex:2;max-width:none;background:var(--ai);color:#fff;font-size:16px;box-shadow:0 1px 0 rgba(0,0,0,.30)}
+.kgo{flex:1;max-width:none;background:var(--ai);color:#fff;font-size:16px;box-shadow:0 1px 0 rgba(0,0,0,.30)}
 .keypad.done{opacity:.4;pointer-events:none}
 .next{position:relative;overflow:hidden;display:block;width:100%;margin-top:14px;padding:14px;background:var(--ai);color:#fff;border-radius:6px;font-size:16px}
 .next .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.26);width:0}
@@ -265,7 +265,6 @@ nav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;le
           <div class="krow" data-row="asdfghjkl"></div>
           <div class="krow" data-row="zxcvbnm"></div>
           <div class="krow krow-act">
-            <button class="kkey kdel" data-act="del" aria-label="刪除">⌫</button>
             <button class="kkey kgo" data-act="go">送出</button>
           </div>
         </div>
@@ -1125,6 +1124,7 @@ $('#quitBtn').onclick=()=>{if(sessionN>0)showResult();else setPhase('setup')};
 $('#listenBtn').onclick=()=>cur&&speak(moraSpeech(cur.kana));
 $('#nextBtn').onclick=goNext;
 document.querySelectorAll('#keypad .krow[data-row]').forEach(r=>{r.innerHTML=[...r.dataset.row].map(c=>`<button class="kkey" data-k="${c}">${c}</button>`).join('');});
+document.querySelector('#keypad .krow[data-row="zxcvbnm"]').insertAdjacentHTML('beforeend','<button class="kkey kdel" data-act="del" aria-label="刪除">⌫</button>');
 $('#keypad').addEventListener('click',ev=>{
   const b=ev.target.closest('button');if(!b)return;
   const e=history[hi];if(!e||e.answered)return;
